@@ -24,7 +24,7 @@ class Animation(Base):
     is_rendered: Mapped[bool] = mapped_column(default=False)
 
 
-engine = create_engine("sqlite:///blender_animation.db")
+engine = create_engine("sqlite:///animation.db")
 Base.metadata.create_all(engine)
 
 
@@ -42,7 +42,7 @@ class NewScene(BaseModel):
 app = FastAPI()
 
 
-# Local Server Setup
+# Local Server Check
 @app.get("/")
 def root():
     "ensures the server is running"
@@ -54,14 +54,14 @@ def root():
 def post_new_scene(scene: NewScene):
     """posts a new scene entry"""
     with Session(engine) as session:
-        new_scene = NewScene(
+        new_scene = Animation(
             scene_no=scene.scene_no,
             scene_desc=scene.scene_desc,
             is_finished=scene.is_finished,
             is_rendered=scene.is_rendered,
         )
         session.add(new_scene)
-        scene.commit()
+        session.commit()
         session.refresh(new_scene)
 
-    return
+    return {"message": "posted"}
