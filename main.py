@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from pydantic import Field
 from typing import Optional, Literal
 
-from sqlalchemy import create_engine, String, Integer, Float
+from sqlalchemy import create_engine, String, Integer, Float, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
 
@@ -64,4 +64,26 @@ def post_new_scene(scene: NewScene):
         session.commit()
         session.refresh(new_scene)
 
-    return {"message": "posted"}
+    return {
+        "message": "new scene added!",
+        "scene no.": scene.scene_no,
+        "scene description": scene.scene_desc,
+        "finished": scene.is_finished,
+        "rendered": scene.is_rendered,
+    }
+
+
+@app.get("/scenes/all")
+def get_all_scenes(): # Need this to work properly
+    with Session(engine) as session:
+        result = session.execute(select(Animation))
+        for scene in result.scalars():
+            print(scene.scene_no, scene.scene_desc)
+
+# Update individual columns ; change finished, rendered method
+# Delete individual columns method
+# Retrieve all rows and columns (above, need to fix)
+
+# Add way to create new table for inidivudal animations?
+# Don't allow duplicate entries for "scene.no"
+
