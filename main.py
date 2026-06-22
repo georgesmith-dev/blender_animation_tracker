@@ -74,16 +74,30 @@ def post_new_scene(scene: NewScene):
 
 
 @app.get("/scenes/all")
-def get_all_scenes(): # Need this to work properly
+def get_all_scenes():
+    "returns a list of all scene numbers and corresponding description"
     with Session(engine) as session:
         result = session.execute(select(Animation))
+        # Returns an entire list, maybe I should change it to a list of dicts?
+        all_result = [f"scene: {scene.scene_no}, description: {scene.scene_desc}" for scene in result.scalars()]
+        return(all_result)
+
+
+@app.get("/scenes/{num}")
+def get_scene(num: int= Path(gt=0, description="scene no must be greater than 0")):
+    "returns the scene number and corresponding description for an individual scene"
+    with Session(engine) as session:
+        stmt = select(Animation).where(Animation.scene_no == num)
+        result = session.execute(stmt)
         for scene in result.scalars():
-            print(scene.scene_no, scene.scene_desc)
+            return(f"scene: {scene.scene_no}, description: {scene.scene_desc}") # I need to add a clause for duplicate scene_no
+        raise HTTPException(status_code=404, detail=f"Scene {num} was not found")
+
+
 
 # Update individual columns ; change finished, rendered method
 # Delete individual columns method
-# Retrieve all rows and columns (above, need to fix)
 
 # Add way to create new table for inidivudal animations?
-# Don't allow duplicate entries for "scene.no"
+# Don't allow duplicate entries for "scene.no!!!"
 
