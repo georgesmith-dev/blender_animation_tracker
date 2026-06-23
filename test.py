@@ -16,6 +16,8 @@ def post_new_scene(base_url):
     new_scene = {
         "scene_no": 1,
         "scene_desc": "Test scene",
+        "scene_frames": 200,
+        "scene_length": 12.5,
         "is_finished": True,
         "is_rendered": True,
     }
@@ -57,10 +59,20 @@ def get_single_scene(base_url, num: int):
     except requests.RequestException as e:
         print(f"An unexpected error has occured: {e}")
 
+
+def delete_scene(base_url, num: int):
+    try:
+        delete_scene_response = requests.delete(f"{base_url}/scenes/{num}")
+        print(delete_scene_response.status_code)
+        print(delete_scene_response.json())
+    except requests.RequestException as e:
+        print(f"An unexpected error has occured: {e}")
+
+
 if __name__ == "__main__":
     # check_status("http://127.0.0.1:8000")
-    # post_new_scene("http://127.0.0.1:8000")
+    post_new_scene("http://127.0.0.1:8000")
     # invalid_post_new_scene("http://127.0.0.1:8000")
     # get_all_scenes("http://127.0.0.1:8000")
-    get_single_scene("http://127.0.0.1:8000", num= 6)
-
+    # get_single_scene("http://127.0.0.1:8000", num=6)
+    # delete_scene("http://127.0.0.1:8000", num=6)
