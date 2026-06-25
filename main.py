@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from pydantic import Field
 from typing import Optional, Literal
 
-from sqlalchemy import create_engine, String, Integer, Float, select, delete, exists
+from sqlalchemy import create_engine, String, Integer, Float, select, delete, exists, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
 
@@ -18,7 +18,7 @@ class Animation(Base):
 
     __tablename__ = "animation"
     id: Mapped[int] = mapped_column(primary_key=True)
-    scene_no: Mapped[int] = mapped_column(Integer, nullable=False)
+    scene_no: Mapped[int] = mapped_column(Integer, nullable=False, unique=True)
     scene_desc: Mapped[str] = mapped_column(String, nullable=False)
     scene_frames: Mapped[int] = mapped_column(Integer, nullable=False)
     scene_length: Mapped[float] = mapped_column(Float, nullable=False)
@@ -28,7 +28,7 @@ class Animation(Base):
 
 engine = create_engine("sqlite:///animation.db")
 Base.metadata.create_all(engine)
-
+ 
 
 # Pydantic Model
 class NewScene(BaseModel):
@@ -127,11 +127,11 @@ def update_scene(num: int = Path(gt=0, description="scene no must be greater tha
         pass
 
 
-# Add scene length ~ float value when creating new scene
 # Update individual columns ; change finished, rendered method
 # get all scenes should filter by scene_no incrementing
 
+# shoiuld I add a default value of 0 to scene_frames, scene_length?
 # should I move the scene query validation to it's own function and call it to prevent re-using code?
-# Don't allow duplicate entries for "scene.no!!!"
+
 # Need to add more defensive clauses within the functions
 # Add way to create new table for inidivudal animations?
