@@ -4,7 +4,16 @@ from pydantic import BaseModel
 from pydantic import Field
 from typing import Optional, Literal
 
-from sqlalchemy import create_engine, String, Integer, Float, select, delete, exists, update
+from sqlalchemy import (
+    create_engine,
+    String,
+    Integer,
+    Float,
+    select,
+    delete,
+    exists,
+    update,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
 
@@ -28,7 +37,7 @@ class Animation(Base):
 
 engine = create_engine("sqlite:///animation.db")
 Base.metadata.create_all(engine)
- 
+
 
 # Pydantic Model
 class NewScene(BaseModel):
@@ -54,6 +63,16 @@ def root():
 
 
 # FastAPI app
+def validate_scene(num):
+    "validates scene exists before applying methods"
+    with Session(engine) as session:
+        exists_stmt = exists().where(Animation.scene_no == num).select()
+        exists_bool = session.scalar(exists_stmt)
+        if not exists_bool:
+            return None
+        return num
+
+
 @app.post("/scenes")
 def post_new_scene(scene: NewScene):
     """posts a new scene entry"""
@@ -88,7 +107,7 @@ def get_all_scenes():
         result = session.execute(select(Animation))
         # Returns an entire list, maybe I should change it to a list of dicts?
         all_result = [
-            f"scene: {scene.scene_no}, description: {scene.scene_desc}"
+            f"scene: {scene.scene_no}, description: {scene.scene_desc}"  # add additional data? scene_length, frames, etc
             for scene in result.scalars()
         ]
         return all_result
@@ -108,16 +127,16 @@ def get_scene(num: int = Path(gt=0, description="scene no must be greater than 0
 @app.delete("/scenes/{num}")
 def delete_scene(num: int = Path(gt=0, description="scene no must be greater than 0")):
     "deletes the entire scene data based on number input"
-    with Session(engine) as session:
-        exists_stmt = exists().where(Animation.scene_no == num).select()
-        exists_bool = session.scalar(exists_stmt)
-        if not exists_bool:
-            return f"scene {num} does not exist"
 
-        stmt = delete(Animation).where(Animation.scene_no == num)
+    validated_scene_no = validate_scene(num)
+    if not validated_scene_no:
+        return f"scene: {num} does not exist"
+
+    with Session(engine) as session:
+        stmt = delete(Animation).where(Animation.scene_no == validated_scene_no)
         session.execute(stmt)
         session.commit()
-        return f"scene: {num} has been deleted"  # It is still 'deleting' even if nothing is there. Should query if it actually exists first
+        return f"scene: {validated_scene_no} has been deleted"
 
 
 @app.patch("/scenes/{num}")
@@ -128,10 +147,10 @@ def update_scene(num: int = Path(gt=0, description="scene no must be greater tha
 
 
 # Update individual columns ; change finished, rendered method
-# get all scenes should filter by scene_no incrementing
+# get all scenes should filter by scene_no incrementing?
 
 # shoiuld I add a default value of 0 to scene_frames, scene_length?
-# should I move the scene query validation to it's own function and call it to prevent re-using code?
+# add validate_scene to all appropriate functions
 
 # Need to add more defensive clauses within the functions
 # Add way to create new table for inidivudal animations?

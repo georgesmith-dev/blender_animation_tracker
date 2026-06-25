@@ -71,8 +71,8 @@ def delete_scene(base_url, num: int):
 
 if __name__ == "__main__":
     # check_status("http://127.0.0.1:8000")
-    post_new_scene("http://127.0.0.1:8000")
+    # post_new_scene("http://127.0.0.1:8000")
     # invalid_post_new_scene("http://127.0.0.1:8000")
     # get_all_scenes("http://127.0.0.1:8000")
     # get_single_scene("http://127.0.0.1:8000", num=6)
-    # delete_scene("http://127.0.0.1:8000", num=6)
+    delete_scene("http://127.0.0.1:8000", num=1)
