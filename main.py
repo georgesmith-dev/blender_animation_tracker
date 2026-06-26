@@ -45,10 +45,22 @@ class NewScene(BaseModel):
 
     scene_no: int
     scene_desc: str = Field(min_length=1, max_length=50)
-    scene_frames: int = False
-    scene_length: float = False
+    scene_frames: int = None
+    scene_length: float = None
     is_finished: bool = False
     is_rendered: bool = False
+
+
+# Pydantic Model
+class UpdatedScene(BaseModel):
+    "defines the data shape of the updated scene entry"
+
+    scene_no: Optional[int] = None
+    scene_desc: Optional[str] = None
+    scene_frames: Optional[int] = None
+    scene_length: Optional[float] = None
+    is_finished: Optional[bool] = None
+    is_rendered: Optional[bool] = None
 
 
 # FastAPI
@@ -120,7 +132,7 @@ def get_scene(num: int = Path(gt=0, description="scene no must be greater than 0
         stmt = select(Animation).where(Animation.scene_no == num)
         result = session.execute(stmt)
         for scene in result.scalars():
-            return f"scene: {scene.scene_no}, description: {scene.scene_desc}"  # I need to add a clause for duplicate scene_no
+            return f"scene: {scene.scene_no}, description: {scene.scene_desc}"
         raise HTTPException(status_code=404, detail=f"Scene {num} was not found")
 
 
@@ -140,10 +152,36 @@ def delete_scene(num: int = Path(gt=0, description="scene no must be greater tha
 
 
 @app.patch("/scenes/{num}")
-def update_scene(num: int = Path(gt=0, description="scene no must be greater than 0")):
+def update_scene(
+    updated_scene: UpdatedScene,
+    num: int = Path(gt=0, description="scene no must be greater than 0"),
+):
     "updates scene data based on number input"
     with Session(engine) as session:
-        pass
+
+        validated_scene_no = validate_scene(num)
+        if not validated_scene_no:
+            return f"scene: {num} does not exist"
+
+        stmt = select(Animation).where(Animation.scene_no == validated_scene_no)
+        result = session.execute(stmt)
+        updated_scene_dict = updated_scene.model_dump()
+        scene = result.scalars().first()
+
+        for k, v in updated_scene_dict.items():
+            if v != None:
+                setattr(scene, k, v)
+
+        session.commit()
+        return {
+            "message": "scene has been updated!",
+            "scene no.": scene.scene_no,
+            "scene description": scene.scene_desc,
+            "total frames": scene.scene_frames,
+            "approx. length (seconds)": scene.scene_length,
+            "finished": scene.is_finished,
+            "rendered": scene.is_rendered,
+        }
 
 
 # Update individual columns ; change finished, rendered method
