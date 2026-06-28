@@ -1,8 +1,7 @@
 from fastapi import FastAPI, Path, HTTPException
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pydantic import Field
-from typing import Optional, Literal
+from typing import Optional
 
 from sqlalchemy import (
     create_engine,
@@ -12,7 +11,6 @@ from sqlalchemy import (
     select,
     delete,
     exists,
-    update,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
@@ -43,10 +41,10 @@ Base.metadata.create_all(engine)
 class NewScene(BaseModel):
     "defines the data shape of the new scene entry"
 
-    scene_no: int
-    scene_desc: str = Field(min_length=1, max_length=50)
-    scene_frames: int = None
-    scene_length: float = None
+    scene_no: int = Field(ge=1)
+    scene_desc: str = Field(min_length=1, max_length=100)
+    scene_frames: int = Field(default=0, ge=1)
+    scene_length: float = Field(default=0, ge=0.1)
     is_finished: bool = False
     is_rendered: bool = False
 
@@ -67,7 +65,6 @@ class UpdatedScene(BaseModel):
 app = FastAPI()
 
 
-# Local Server Check
 @app.get("/")
 def root():
     "ensures the server is running"
@@ -117,23 +114,28 @@ def get_all_scenes():
     "returns a list of all scene numbers and corresponding description"
     with Session(engine) as session:
         result = session.execute(select(Animation))
-        # Returns an entire list, maybe I should change it to a list of dicts?
-        all_result = [
-            f"scene: {scene.scene_no}, description: {scene.scene_desc}"  # add additional data? scene_length, frames, etc
+        all_result = {
+            f"scene: {scene.scene_no}, description: {scene.scene_desc}"
             for scene in result.scalars()
-        ]
+        }
         return all_result
 
 
 @app.get("/scenes/{num}")
 def get_scene(num: int = Path(gt=0, description="scene no must be greater than 0")):
     "returns the scene number and corresponding description for an individual scene"
+    validated_scene_no = validate_scene(num)
+    if not validated_scene_no:
+        return f"scene: {num} does not exist"
+
     with Session(engine) as session:
-        stmt = select(Animation).where(Animation.scene_no == num)
+        stmt = select(Animation).where(Animation.scene_no == validated_scene_no)
         result = session.execute(stmt)
         for scene in result.scalars():
             return f"scene: {scene.scene_no}, description: {scene.scene_desc}"
-        raise HTTPException(status_code=404, detail=f"Scene {num} was not found")
+        raise HTTPException(
+            status_code=404, detail=f"Scene {validated_scene_no} was not found"
+        )
 
 
 @app.delete("/scenes/{num}")
@@ -157,11 +159,12 @@ def update_scene(
     num: int = Path(gt=0, description="scene no must be greater than 0"),
 ):
     "updates scene data based on number input"
-    with Session(engine) as session:
 
-        validated_scene_no = validate_scene(num)
-        if not validated_scene_no:
-            return f"scene: {num} does not exist"
+    validated_scene_no = validate_scene(num)
+    if not validated_scene_no:
+        return f"scene: {num} does not exist"
+
+    with Session(engine) as session:
 
         stmt = select(Animation).where(Animation.scene_no == validated_scene_no)
         result = session.execute(stmt)
@@ -182,13 +185,3 @@ def update_scene(
             "finished": scene.is_finished,
             "rendered": scene.is_rendered,
         }
-
-
-# Update individual columns ; change finished, rendered method
-# get all scenes should filter by scene_no incrementing?
-
-# shoiuld I add a default value of 0 to scene_frames, scene_length?
-# add validate_scene to all appropriate functions
-
-# Need to add more defensive clauses within the functions
-# Add way to create new table for inidivudal animations?
